@@ -1,0 +1,41 @@
+{
+  "name": "dsh-retro",
+  "version": "0.1.0",
+  "description": "DeepSeek Harness 复盘插件（方向 A1 原型）：事件驱动的回合轨迹采集 + 会话摘要 + retro_review 结构化复盘工具 + inbox 导入 + 可选 OpenViking 记忆沉淀。默认 enabled:false。零 npm 依赖。",
+  "type": "module",
+  "main": "lib/index.js",
+  "exports": {
+    ".": "./lib/index.js",
+    "./cordis.patch.yml": "./cordis.patch.yml",
+    "./package.json": "./package.json",
+    "./client": "./lib/client.js"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "inject": [
+        "@deepseek-ai/dsh-client-runtime",
+        "@deepseek-ai/dsh-client-ui-settings",
+        "@deepseek-ai/dsh-client-ui-settings-plugins",
+        "@deepseek-ai/dsh-client-locale",
+        "@deepseek-ai/dsh-client-connection",
+        "@deepseek-ai/dsh-api-remotes"
+      ]
+    }
+  },
+  "files": [
+    "lib",
+    "cordis.patch.yml",
+    "README.md"
+  ],
+  "scripts": {
+    "test": "node --test tests/core.test.mjs tests/plugin.test.mjs tests/a2.test.mjs tests/a3.test.mjs tests/a4.test.mjs"
+  },
+  "engines": {
+    "node": "^22.19.0 || >=24"
+  },
+  "license": "MIT"
+}

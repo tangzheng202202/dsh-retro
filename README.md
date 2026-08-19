@@ -133,10 +133,24 @@ retro_review 提交的 `skillCandidates` 会被自动收割进 `candidates.json`
   client 面板展示 verdict 徽章与 deprecated 计数
 - 局限：当前会话摘要样本少，多数 verdict 会是 insufficient；随着任务积累数据才有效。
   未来若 tool-skill 暴露加载事件，可升级为真实使用遥测。
+
+## B 系列：进化门控（日志 / canary / 裁判一致性 / 自动回滚）
+
+- **B0 决策日志**：`evolution.log.jsonl` 记录每一次 promote / reject / auto-rollback /
+  canary 失败——「改了什么都查得回来」，全可追溯。
+- **B1 canary 冒烟门**：晋升写入后立即读回校验（frontmatter 分隔符 / name /
+  description / 无密钥），失败则拒绝晋升并归档失败文件。
+- **B2 裁判一致性校验**：judge.evidence 必须引用候选名或 taskType，防「模板化裁判」
+  （`judgeConsistency:false` 可关，向后兼容）。
+- **B3 自动回滚**：遥测 verdict=deprecated 时，skill 文件自动移入
+  `~/.dsh/skills-archive/`（skill provider 不再发现，可恢复）+ 记日志。
+  判定含**绝对红线**：无基线时失败率/纠错率 ≥50% 且样本≥3 也触发降级。
+
+配置：`evolutionLog` / `autoRollback` / `judgeConsistency`（默认全开）。
 ## 里程碑
 
 - [x] A0/A1：自动触发 + 结构化复盘落盘（本原型）
 - [x] A2：skill inbox + lint 晋升门（retro_inbox / skill_promote / skill_reject）
 - [ ] A3：probe/judge 自动晋升
 - [x] A4：skill 遥测闭环 + 自动降级（retro_telemetry + 代理指标 + deprecated 标记）
-- [ ] B 系列：进化门控（canary 测试门 → 独立 judge → 自动回滚）
+- [x] B 系列：进化门控（B0 日志 / B1 canary / B2 裁判一致性 / B3 自动回滚）

@@ -32,7 +32,7 @@
     "README.md"
   ],
   "scripts": {
-    "test": "node --test tests/core.test.mjs tests/plugin.test.mjs tests/a2.test.mjs tests/a3.test.mjs tests/a4.test.mjs"
+    "test": "node --test tests/core.test.mjs tests/plugin.test.mjs tests/a2.test.mjs tests/a3.test.mjs tests/a4.test.mjs tests/b.test.mjs"
   },
   "engines": {
     "node": "^22.19.0 || >=24"

@@ -27,7 +27,7 @@ const CAND = {
 }
 
 function findTool(ctx, name) { return ctx.registered.find((t) => t.name === name) }
-const JUDGE_PASS = { verdict: 'pass', evidence: '候选指令完整、命名合规、无密钥特征，具备可执行性，批准晋升', risks: '无' }
+const JUDGE_PASS = { verdict: 'pass', evidence: 'a3-test-skill 候选指令完整、命名合规、无密钥特征，具备可执行性，批准晋升', risks: '无' }
 
 function setup() {
   const dir = mkdtempSync(join(tmpdir(), 'retro-a3-'))

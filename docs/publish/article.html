@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>让 Agent 学会进化：DeepSeek Harness 自进化实践全记录</title>
+<style>
+body{margin:0;background:#f5f4f0;padding:0}
+.article{max-width:677px;margin:0 auto;background:#fff;padding:36px 28px 48px;font-family:-apple-system,"PingFang SC","Microsoft YaHei","Helvetica Neue",sans-serif;color:#1f2329;font-size:15.5px;line-height:1.85}
+h1{font-size:24px;line-height:1.45;font-weight:700;margin:0 0 8px;color:#111}
+.sub{color:#7a7f87;font-size:13.5px;margin-bottom:26px}
+h2{font-size:19px;font-weight:700;margin:34px 0 12px;color:#111;padding-left:10px;border-left:4px solid #2f6fed}
+h3{font-size:16px;font-weight:600;margin:22px 0 8px;color:#1f2329}
+p{margin:10px 0;text-align:justify}
+strong{color:#111;font-weight:700}
+.hl{background:linear-gradient(transparent 55%,#ffe28a 55%);padding:0 2px}
+.quote{border-left:3px solid #d8dce3;background:#f7f8fa;padding:10px 14px;margin:14px 0;color:#4b5158;border-radius:0 6px 6px 0;font-size:14.5px}
+figure{margin:22px 0;text-align:center}
+figure img{width:100%;border-radius:10px;border:1px solid #ececec;box-shadow:0 2px 10px rgba(0,0,0,.06)}
+figcaption{color:#9aa0a8;font-size:12.5px;margin-top:8px}
+ul,ol{margin:10px 0;padding-left:22px}
+li{margin:6px 0}
+.code{background:#f6f8fa;border:1px solid #e6e8ec;border-radius:8px;padding:12px 14px;font-family:"SF Mono",Menlo,monospace;font-size:13px;color:#24292f;overflow-x:auto;white-space:pre;line-height:1.6}
+.table-wrap{overflow-x:auto;margin:14px 0}
+table{border-collapse:collapse;font-size:14px;width:100%}
+th,td{border:1px solid #e6e8ec;padding:8px 10px;text-align:left}
+th{background:#f6f8fa;font-weight:600}
+.end{margin-top:36px;padding-top:18px;border-top:1px solid #ececec;color:#7a7f87;font-size:13.5px;text-align:center}
+a{color:#2f6fed;text-decoration:none}
+</style>
+</head>
+<body>
+<div class="article">
+
+<h1>让 Agent 学会进化：DeepSeek Harness 自进化实践全记录</h1>
+<div class="sub">从「用工具」到「造工具给自己用」· dsh-retro 插件开源实录</div>
+
+<p>大模型的能力边界由权重决定，但<span class="hl">上限之外的增量，几乎全在系统层</span>：工具、记忆、技能、验证回路、长任务编排。这篇文章记录我如何把一个开源 Harness 从「聊天工具」养成了一个「会自我进化的操作系统」——复盘、技能晋升、门禁、遥测，全部落地成真实代码，并跑通了真实宿主验证。</p>
+
+<h2>① 为什么是 Harness，而不是模型</h2>
+<p>DeepSeek Harness（DSH）的架构事实是「<strong>一切皆插件，没有特权内核</strong>」——模型适配器、工具注册表、会话日志、agent loop 本身都是可替换的插件。扩展它不是 fork 内核，而是写插件挂到扩展点上；卸载即撤销，零残留。</p>
+<p>它天然为自我修改设计：因为扩展点是可逆副作用，一个 agent 完全可以让系统自己写插件、挂载、测试、回滚。</p>
+<div class="quote">第一原则：不要把它当聊天工具，要当可持续演化的操作系统来养。</div>
+
+<h2>② 应用哲学：六个抓手</h2>
+<ul>
+<li><strong>过程资产</strong>：会话日志是仅追加事件流——工具调用轨迹、纠错、验证结果，全是可回流的高价值数据。</li>
+<li><strong>验证闭环</strong>：能力上限不在模型，在反馈速度。每次修改要有可执行验证门。</li>
+<li><strong>并行委托</strong>：subagent / workflow 扇出独立工作，主线程只做编排与验证。</li>
+<li><strong>记忆</strong>：决策、偏好、踩坑的沉淀，让每个会话站在前面所有会话的肩膀上。</li>
+<li><strong>技能沉淀</strong>：任务做完自动提炼 skill，同类任务下次直接加载。</li>
+<li><strong>长任务心跳</strong>：任务停滞或宿主重启后自动唤醒续跑。</li>
+</ul>
+
+<h2>③ 自进化路径：五层阶梯</h2>
+<div class="table-wrap"><table>
+<tr><th>层级</th><th>名称</th><th>完成标志</th></tr>
+<tr><td>L0</td><td>静态助手</td><td>单轮问答</td></tr>
+<tr><td>L1</td><td>工具型 agent</td><td>能闭环执行任务</td></tr>
+<tr><td>L2</td><td>记忆型 agent</td><td>跨会话复用经验</td></tr>
+<tr><td>L3</td><td>复盘型 agent</td><td>任务结束自动产出经验</td></tr>
+<tr><td>L4</td><td>自改进 agent</td><td>修改自己的 skill/prompt，过验证门生效</td></tr>
+<tr><td>L5</td><td>元进化</td><td>进化出进化能力本身</td></tr>
+</table></div>
+<p>更重要的是一条<span class="hl">双飞轮</span>：本机能进化的是外脑资产（skill / 插件 / 记忆），权重进化在训练侧；而 Harness 产生的高质量轨迹数据可以回流训练——<strong>harness 是模型进化的数据工厂，模型是 harness 的大脑</strong>。</p>
+
+<figure><img src="images/01-architecture.png" alt="自进化闭环架构"><figcaption>图 1 · 从复盘到技能的完整闭环</figcaption></figure>
+
+<h2>④ 落地实录：A1→A4，全部真实宿主验证</h2>
+
+<h3>A1 · 复盘采集层</h3>
+<p>监听 session 事件流，把 turn / step / tool / user 事件折叠成结构化轨迹——<strong>不记工具参数、不记对话正文</strong>，只记工具名、成败、错误码、时长、纠正计数。隐私优先。</p>
+<figure><img src="images/02-storage.png" alt="存储布局"><figcaption>图 2 · 存储布局：轨迹 / 摘要 / 复盘 / 账本</figcaption></figure>
+<figure><img src="images/03-turn-trace.png" alt="回合轨迹"><figcaption>图 3 · 一次真实回合的折叠结果（14 步工具调用）</figcaption></figure>
+
+<h3>A2 · skill 候选 inbox + 晋升门</h3>
+<p>复盘里的 skillCandidates 自动收割进账本（去重、带完整出处、状态机 pending→promoted/rejected）。晋升过 lint 门后写入技能目录。</p>
+<p><strong>关键发现</strong>：DSH 的 skill provider 用文件监听——写入即被发现，<span class="hl">skill catalog 实时更新，无需重启</span>。四次真实晋升，四次都在下一轮会话的可用技能列表里即时出现。</p>
+<figure><img src="images/04-skill-catalog.png" alt="skill 实时发现"><figcaption>图 4 · 写入即被发现：三次晋升三次实时入列</figcaption></figure>
+
+<h3>A3 · probe / judge 门禁</h3>
+<p>晋升门升级为三道闸：<strong>lint</strong>（机械检查）→ <strong>probe</strong>（真实试跑，failed 阻止晋升）→ <strong>judge</strong>（独立裁判意见必填：verdict=pass + 证据）。账本完整记录审计链。</p>
+<div class="quote">自进化的护栏：裁判与门规本身不可被进化。</div>
+
+<h3>A4 · 遥测闭环 + 自动降级</h3>
+<p>retro_telemetry 生成「skill 投资回报表」：按 skill 覆盖的任务类型聚合晋升前后的会话质量（工具失败率 / 用户纠错率），verdict=healthy / deprecated / insufficient。<strong>恶化的 skill 自动降级标记</strong>（不删文件，可追溯）。</p>
+<p>诚实说明：DSH 目前没有「skill 被加载」事件，A4 用的是<span class="hl">代理指标</span>——衡量任务类型前后的质量变化，而非真实调用次数。样本积累中，多数 verdict 暂为 insufficient，这是数据阶段而非缺陷。</p>
+
+<h3>Web 面板</h3>
+<p>宿主注册 /retro/state 数据通道，设置页挂「复盘与技能晋升」卡片；审批写操作留在会话内由 agent 执行。</p>
+<figure><img src="images/05-api.png" alt="API 通道"><figcaption>图 5 · /retro/state 真实返回</figcaption></figure>
+
+<h2>⑤ 三个关键架构发现</h2>
+<ul>
+<li><strong>skill 实时发现</strong>：技能目录被监听，写入即被 skill 工具加载——自进化闭环的「发布」环节零延迟。</li>
+<li><strong>热更新路径</strong>：client 改动刷页面即可；host 实验用 cordis 动态加载；正式落地攒批重启，一次重启验证一批改动。</li>
+<li><strong>进程级真相</strong>：宿主单进程，正式插件代码启动时加载——把验证节奏从「改一次重启一次」优化为「攒批重启」。</li>
+</ul>
+
+<h2>⑥ 踩坑集（工程师视角）</h2>
+<ul>
+<li>大段 heredoc 经工具传输会挂起——改用 write 工具直接写文件。</li>
+<li>工具 execute 的 exec 是第二参数，不是 args 里的字段——一个签名错误让会话归属全错。</li>
+<li>编辑锚点差一个分号导致改动被静默跳过——用测试验证行为，而非只查语法。</li>
+<li>bash 历史扩展：双引号里的 $! 触发 event not found——set +H。</li>
+<li>前台 git commit 在工具环境挂起——后台独立脚本执行，立即返回再轮询。</li>
+</ul>
+
+<h2>⑦ 自进化的边界与下一步</h2>
+<p><strong>边界</strong>：能进化的不是权重，是外脑资产；进化必须可测试、可回滚、可积累。三层门禁就是「自我修改」的护栏。</p>
+<p><strong>下一步</strong>：让复盘提交成为习惯，样本量上来后遥测判定才有统计意义；等待 skill 加载事件以升级真实遥测；推进进化门控的自动回滚；最后把轨迹数据管道接到训练侧，闭合双飞轮。</p>
+
+<figure><img src="images/06-github.png" alt="开源发布"><figcaption>图 6 · 已开源：dsh-retro @ GitHub</figcaption></figure>
+
+<div class="end">
+代码开源：<a href="https://github.com/tangzheng202202/dsh-retro">github.com/tangzheng202202/dsh-retro</a><br>
+零 npm 依赖 · 27 项测试 · A1-A4 + Web 面板
+</div>
+
+</div>
+</body>
+</html>

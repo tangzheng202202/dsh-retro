@@ -1,0 +1,32 @@
+<!doctype html><meta charset="utf-8"><style>
+body{margin:0;padding:28px 32px;background:#0d1117;color:#e6edf3;font-family:-apple-system,"PingFang SC","Helvetica Neue",monospace;box-sizing:border-box}
+.tag{display:inline-block;font-size:12px;color:#58a6ff;border:1px solid #388bfd66;border-radius:20px;padding:2px 12px;margin-bottom:12px}
+h1{font-size:21px;margin:0 0 14px;color:#f0f6fc;font-weight:700}
+h2{font-size:15px;margin:18px 0 8px;color:#58a6ff;font-weight:600}
+.shell{background:#161b22;border:1px solid #30363d;border-radius:10px;padding:14px 16px;font-size:13px;line-height:1.55;white-space:pre;overflow:hidden}
+.ok{color:#3fb950}.dim{color:#8b949e}.hi{color:#f0883e;font-weight:600}
+.grid{display:flex;gap:10px;flex-wrap:wrap}
+.card{flex:1;min-width:150px;background:#161b22;border:1px solid #30363d;border-radius:10px;padding:12px 14px}
+.card b{display:block;font-size:13px;color:#f0f6fc;margin-bottom:4px}
+.card span{font-size:11px;color:#8b949e;line-height:1.5;display:block}
+.arrow{font-size:16px;color:#58a6ff;text-align:center;padding:4px 0}
+.badge{display:inline-block;font-size:11px;border-radius:12px;padding:1px 10px;margin-left:6px}
+.b-green{background:#2ea04333;color:#3fb950}.b-yellow{background:#d2992233;color:#e3b341}.b-blue{background:#1f6feb33;color:#58a6ff}
+</style>
+<div class="tag">真实宿主 · 存储布局</div>
+<h1>~/.dsh/storages/dsh-retro</h1>
+<div class="shell">$ ls -la ~/.dsh/storages/dsh-retro/
+drwxr-xr-x  8 mac  staff   256  storages/dsh-retro/
+-rw-r--r--  1 mac  staff  6275  candidates.json   <span class="dim"># skill 候选账本</span>
+drwxr-xr-x  2 mac  staff    64  inbox/            <span class="dim"># 外部投递入口</span>
+drwxr-xr-x  2 mac  staff    64  processed/        <span class="dim"># 已摄入投递</span>
+drwxr-xr-x  9 mac  staff   288  retros/           <span class="dim"># 结构化复盘 8 份</span>
+drwxr-xr-x 21 mac  staff   672  sessions/         <span class="dim"># 会话摘要 20 份</span>
+drwxr-xr-x  3 mac  staff    96  turns/            <span class="dim"># 回合轨迹 JSONL</span>
+
+<span class="ok">$ jq '.candidates[] | {name,status}' candidates.json</span>
+<span class="dim">{ "name": "dsh-plugin-zero-dep",      "status": "promoted" }</span>
+<span class="dim">{ "name": "dsh-plugin-host-verify", "status": "promoted" }</span>
+<span class="dim">{ "name": "dsh-skill-promotion-flow", "status": "promoted" }</span>
+<span class="dim">{ "name": "a3-live-gate-demo",      "status": "promoted" }</span>
+<span class="dim">{ "name": "dsh-prompt-mismatch-verification", "status": "pending" }</span></div>

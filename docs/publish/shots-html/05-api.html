@@ -1,0 +1,38 @@
+<!doctype html><meta charset="utf-8"><style>
+body{margin:0;padding:28px 32px;background:#0d1117;color:#e6edf3;font-family:-apple-system,"PingFang SC","Helvetica Neue",monospace;box-sizing:border-box}
+.tag{display:inline-block;font-size:12px;color:#58a6ff;border:1px solid #388bfd66;border-radius:20px;padding:2px 12px;margin-bottom:12px}
+h1{font-size:21px;margin:0 0 14px;color:#f0f6fc;font-weight:700}
+h2{font-size:15px;margin:18px 0 8px;color:#58a6ff;font-weight:600}
+.shell{background:#161b22;border:1px solid #30363d;border-radius:10px;padding:14px 16px;font-size:13px;line-height:1.55;white-space:pre;overflow:hidden}
+.ok{color:#3fb950}.dim{color:#8b949e}.hi{color:#f0883e;font-weight:600}
+.grid{display:flex;gap:10px;flex-wrap:wrap}
+.card{flex:1;min-width:150px;background:#161b22;border:1px solid #30363d;border-radius:10px;padding:12px 14px}
+.card b{display:block;font-size:13px;color:#f0f6fc;margin-bottom:4px}
+.card span{font-size:11px;color:#8b949e;line-height:1.5;display:block}
+.arrow{font-size:16px;color:#58a6ff;text-align:center;padding:4px 0}
+.badge{display:inline-block;font-size:11px;border-radius:12px;padding:1px 10px;margin-left:6px}
+.b-green{background:#2ea04333;color:#3fb950}.b-yellow{background:#d2992233;color:#e3b341}.b-blue{background:#1f6feb33;color:#58a6ff}
+</style>
+<div class="tag">Web Client · 数据通道</div>
+<h1>GET /retro/state <span class="badge b-green">200 application/json</span></h1>
+<div class="shell">{
+  "ok": true,
+  "counts": { "pending": 1, "promoted": 4, "rejected": 0, "deprecated": 0 },
+  "candidates": [
+    {
+      "name": "dsh-plugin-zero-dep",
+      "status": "promoted",
+      "sourceTaskType": "plugin-dev",
+      "telemetry": {
+        "coveredTaskType": "plugin-dev",
+        "verdict": "insufficient",   <span class="dim">// 样本不足，数据积累中</span>
+        "samplesAfter": 1
+      }
+    }
+    <span class="dim">// ... 共 5 个候选</span>
+  ],
+  "retroCount": 8,
+  "turnFiles": [ "2026-08.jsonl" ]
+}</div>
+<h2>设置页面板</h2>
+<div class="shell">「复盘与技能晋升」卡片：候选列表 + verdict 徽章 + deprecated 计数，审批在会话内由 agent 执行</div>

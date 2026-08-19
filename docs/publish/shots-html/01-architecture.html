@@ -1,0 +1,31 @@
+<!doctype html><meta charset="utf-8"><style>
+body{margin:0;padding:28px 32px;background:#0d1117;color:#e6edf3;font-family:-apple-system,"PingFang SC","Helvetica Neue",monospace;box-sizing:border-box}
+.tag{display:inline-block;font-size:12px;color:#58a6ff;border:1px solid #388bfd66;border-radius:20px;padding:2px 12px;margin-bottom:12px}
+h1{font-size:21px;margin:0 0 14px;color:#f0f6fc;font-weight:700}
+h2{font-size:15px;margin:18px 0 8px;color:#58a6ff;font-weight:600}
+.shell{background:#161b22;border:1px solid #30363d;border-radius:10px;padding:14px 16px;font-size:13px;line-height:1.55;white-space:pre;overflow:hidden}
+.ok{color:#3fb950}.dim{color:#8b949e}.hi{color:#f0883e;font-weight:600}
+.grid{display:flex;gap:10px;flex-wrap:wrap}
+.card{flex:1;min-width:150px;background:#161b22;border:1px solid #30363d;border-radius:10px;padding:12px 14px}
+.card b{display:block;font-size:13px;color:#f0f6fc;margin-bottom:4px}
+.card span{font-size:11px;color:#8b949e;line-height:1.5;display:block}
+.arrow{font-size:16px;color:#58a6ff;text-align:center;padding:4px 0}
+.badge{display:inline-block;font-size:11px;border-radius:12px;padding:1px 10px;margin-left:6px}
+.b-green{background:#2ea04333;color:#3fb950}.b-yellow{background:#d2992233;color:#e3b341}.b-blue{background:#1f6feb33;color:#58a6ff}
+</style>
+<div class="tag">自进化闭环 · 架构</div>
+<h1>从「复盘」到「技能」的闭环</h1>
+<div class="grid">
+  <div class="card"><b>① 任务收尾</b><span>模型调用 retro_review 提交结构化复盘</span></div>
+  <div class="arrow">↓</div>
+  <div class="card"><b>② 权威存储</b><span>retros/*.json + turns/*.jsonl + sessions/*.json</span></div>
+  <div class="arrow">↓</div>
+  <div class="card"><b>③ 候选收割</b><span>skillCandidates → candidates.json 账本（pending）</span></div>
+  <div class="arrow">↓</div>
+  <div class="card"><b>④ 晋升门</b><span>lint → probe → judge 三道闸</span></div>
+  <div class="arrow">↓</div>
+  <div class="card"><b>⑤ 发布</b><span>~/.dsh/skills/&lt;name&gt;.md（Chokidar 实时发现）</span></div>
+  <div class="arrow">↓</div>
+  <div class="card"><b>⑥ 遥测</b><span>retro_telemetry 回报表 · deprecated 自动降级</span></div>
+</div>
+<div class="arrow">↑ 同类任务复用 skill → 新一轮复盘 ────────────────</div>

@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { mkdtempSync, readFileSync, writeFileSync, mkdirSync, existsSync, readdirSync, rmSync } from 'node:fs'
+import { mkdtempSync, readFileSync, writeFileSync, mkdirSync, existsSync, readdirSync, rmSync, symlinkSync, lstatSync, chmodSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { apply } from '../lib/index.js'
@@ -83,7 +83,7 @@ test('B2: judgeConsistency=false 时模板化裁判放行（向后兼容）', as
   rmSync(dir, { recursive: true, force: true })
 })
 
-test('B3: telemetry 恶化 → 自动回滚（文件移入 skills-archive）', async () => {
+test('B3: telemetry 恶化只建议回滚；默认预览、确认归档、预览恢复、确认恢复', async () => {
   const { dir, ctx } = bootWithCandidate()
   // 先晋升
   await findTool(ctx, 'skill_promote').execute({ name: 'b-test-skill', judge: GOOD_JUDGE })
@@ -104,16 +104,121 @@ test('B3: telemetry 恶化 → 自动回滚（文件移入 skills-archive）', a
   const db = JSON.parse(readFileSync(dbPath, 'utf8'))
   db.candidates[0].decidedAt = T0 - 100000
   writeFileSync(dbPath, JSON.stringify(db))
-  // 触发遥测（会 refreshTelemetry + 自动回滚）
-  await findTool(ctx, 'retro_telemetry').execute({})
-  const db2 = JSON.parse(readFileSync(dbPath, 'utf8'))
-  assert.equal(db2.candidates[0].status, 'deprecated')
-  assert.match(db2.candidates[0].note, /已自动回滚/)
-  // 文件已移出 skills/
-  assert.equal(existsSync(join(skillsDir, 'b-test-skill.md')), false)
-  assert.equal(existsSync(join(dir, 'skills-archive', 'b-test-skill.md')), true)
-  // 日志记录
-  const log = readFileSync(join(dir, 'evolution.log.jsonl'), 'utf8')
-  assert.match(log, /"event":"auto-rollback"/)
+  const active = join(skillsDir, 'b-test-skill.md')
+  const archived = join(dir, 'skills-archive', 'b-test-skill.md')
+  const ledgerBefore = readFileSync(dbPath)
+  const skillBefore = readFileSync(active)
+  const logBefore = readFileSync(join(dir, 'evolution.log.jsonl'))
+  const telemetry = await findTool(ctx, 'retro_telemetry').execute({})
+  assert.equal(telemetry.skills[0].verdict, 'deprecated')
+  assert.equal(telemetry.skills[0].rollbackRecommended, true)
+  assert.deepEqual(readFileSync(dbPath), ledgerBefore)
+  assert.deepEqual(readFileSync(active), skillBefore)
+  assert.deepEqual(readFileSync(join(dir, 'evolution.log.jsonl')), logBefore)
+  assert.equal(existsSync(archived), false)
+
+  const rollback = findTool(ctx, 'skill_rollback')
+  const preview = await rollback.execute({ name: 'b-test-skill' })
+  assert.equal(preview.dryRun, true)
+  assert.equal(preview.destination, archived)
+  assert.equal(existsSync(active), true)
+  assert.deepEqual(readFileSync(dbPath), ledgerBefore)
+
+  const moved = await rollback.execute({ name: 'b-test-skill', confirm: true })
+  assert.equal(moved.ok, true, JSON.stringify(moved))
+  assert.equal(existsSync(active), false)
+  assert.deepEqual(readFileSync(archived), skillBefore)
+  assert.equal(JSON.parse(readFileSync(dbPath, 'utf8')).candidates[0].status, 'deprecated')
+  assert.match(readFileSync(join(dir, 'evolution.log.jsonl'), 'utf8'), /"event":"rollback"/)
+  assert.equal((await findTool(ctx, 'retro_telemetry').execute({})).skills[0].verdict, 'deprecated')
+
+  const restore = findTool(ctx, 'skill_restore')
+  const restorePreview = await restore.execute({ name: 'b-test-skill' })
+  assert.equal(restorePreview.dryRun, true)
+  assert.equal(existsSync(active), false)
+  const restored = await restore.execute({ name: 'b-test-skill', confirm: true })
+  assert.equal(restored.ok, true, JSON.stringify(restored))
+  assert.deepEqual(readFileSync(active), skillBefore)
+  assert.equal(existsSync(archived), false)
+  assert.equal(JSON.parse(readFileSync(dbPath, 'utf8')).candidates[0].status, 'promoted')
+  assert.match(readFileSync(join(dir, 'evolution.log.jsonl'), 'utf8'), /"event":"restore"/)
+  rmSync(dir, { recursive: true, force: true })
+})
+
+test('B3: 目标归档文件已存在时拒绝覆盖', async () => {
+  const { dir, ctx } = bootWithCandidate()
+  await findTool(ctx, 'skill_promote').execute({ name: 'b-test-skill', judge: GOOD_JUDGE })
+  const archiveDir = join(dir, 'skills-archive')
+  mkdirSync(archiveDir)
+  const archived = join(archiveDir, 'b-test-skill.md')
+  writeFileSync(archived, 'existing archive')
+  const r = await findTool(ctx, 'skill_rollback').execute({ name: 'b-test-skill', confirm: true })
+  assert.equal(r.ok, false)
+  assert.match(r.error, /拒绝覆盖/)
+  assert.equal(readFileSync(archived, 'utf8'), 'existing archive')
+  assert.equal(existsSync(join(dir, 'skills', 'b-test-skill.md')), true)
+  assert.equal(JSON.parse(readFileSync(join(dir, 'candidates.json'), 'utf8')).candidates[0].status, 'promoted')
+  rmSync(dir, { recursive: true, force: true })
+})
+
+test('B3: 目标是悬空符号链接时也拒绝覆盖', async () => {
+  const { dir, ctx } = bootWithCandidate()
+  await findTool(ctx, 'skill_promote').execute({ name: 'b-test-skill', judge: GOOD_JUDGE })
+  const archiveDir = join(dir, 'skills-archive')
+  mkdirSync(archiveDir)
+  const archived = join(archiveDir, 'b-test-skill.md')
+  symlinkSync(join(archiveDir, 'missing-target.md'), archived)
+  assert.equal(existsSync(archived), false)
+  const before = readFileSync(join(dir, 'candidates.json'))
+  const r = await findTool(ctx, 'skill_rollback').execute({ name: 'b-test-skill', confirm: true })
+  assert.equal(r.ok, false)
+  assert.match(r.error, /拒绝覆盖/)
+  assert.equal(lstatSync(archived).isSymbolicLink(), true)
+  assert.equal(existsSync(join(dir, 'skills', 'b-test-skill.md')), true)
+  assert.deepEqual(readFileSync(join(dir, 'candidates.json')), before)
+  rmSync(dir, { recursive: true, force: true })
+})
+
+test('B3: 账本写入失败时旧 JSON 完整且技能文件复位', { skip: process.platform === 'win32' || process.getuid?.() === 0 }, async () => {
+  const { dir, ctx } = bootWithCandidate()
+  await findTool(ctx, 'skill_promote').execute({ name: 'b-test-skill', judge: GOOD_JUDGE })
+  const active = join(dir, 'skills', 'b-test-skill.md')
+  const archived = join(dir, 'skills-archive', 'b-test-skill.md')
+  mkdirSync(join(dir, 'skills-archive'))
+  const ledgerBefore = readFileSync(join(dir, 'candidates.json'))
+  const skillBefore = readFileSync(active)
+  chmodSync(dir, 0o500) // 允许读取现有文件和在子目录移动，但禁止在根目录新建账本临时文件
+  try {
+    const result = await findTool(ctx, 'skill_rollback').execute({ name: 'b-test-skill', confirm: true })
+    assert.equal(result.ok, false)
+    assert.equal(result.restored, true, JSON.stringify(result))
+    assert.match(result.error, /账本写入失败/)
+    assert.deepEqual(readFileSync(join(dir, 'candidates.json')), ledgerBefore)
+    assert.deepEqual(readFileSync(active), skillBefore)
+    assert.equal(existsSync(archived), false)
+    assert.equal(readdirSync(dir).some((name) => name.startsWith('.candidates-')), false)
+  } finally {
+    chmodSync(dir, 0o700)
+    rmSync(dir, { recursive: true, force: true })
+  }
+})
+
+test('B0: 日志写入失败在工具结果和渲染文本中可见', async () => {
+  const { dir, ctx } = bootWithCandidate()
+  mkdirSync(join(dir, 'evolution.log.jsonl')) // appendFileSync 遇目录会失败
+  const promote = findTool(ctx, 'skill_promote')
+  const originalError = console.error
+  const errors = []
+  console.error = (...parts) => errors.push(parts.join(' '))
+  let result
+  try {
+    result = await promote.execute({ name: 'b-test-skill', judge: GOOD_JUDGE })
+  } finally {
+    console.error = originalError
+  }
+  assert.equal(result.ok, true)
+  assert.match(result.logError, /evolution log write failed/)
+  assert.match(promote.output.render({}, result)[0].text, /evolution log write failed/)
+  assert.match(errors.join('\n'), /evolution log write failed/)
   rmSync(dir, { recursive: true, force: true })
 })

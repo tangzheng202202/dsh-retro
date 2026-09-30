@@ -119,7 +119,7 @@ retro_review 提交的 `skillCandidates` 会被自动收割进 `candidates.json`
 - 加载机制：`dsh.client.platform: web` + `exports["./client"]`，由 web UI 的
   ModuleLoader 按 image-studio 同款范式加载。
 
-## A4：skill 遥测闭环 + 自动降级（代理指标）
+## A4：skill 遥测闭环（代理指标）
 
 **诚实说明**：DSH 目前没有"skill 被模型加载"事件（tool-skill 无加载钩子），所以 A4 用
 **代理指标**——skill 覆盖的 taskType（来源复盘记录）在晋升前后的会话质量对比：
@@ -127,30 +127,35 @@ retro_review 提交的 `skillCandidates` 会被自动收割进 `candidates.json`
 - 指标：工具失败率（failed/total）、用户纠错率（corrections/userMessages）
 - verdict 三态：`healthy`（晋升后 ≥3 个样本且未恶化）/ `deprecated`（失败率或纠错率
   超晋升前基线 ×1.2）/ `insufficient`（样本不足）
-- **自动降级**：`retro_review` 提交后自动刷新遥测，verdict=deprecated 的已晋升 skill
-  被置为 `deprecated` 状态并记录降级原因（note）——skill 文件不删除，只是标记
-- `retro_telemetry` 工具：生成回报表（按 taskType 过滤可选）；`/retro/state` 与
-  client 面板展示 verdict 徽章与 deprecated 计数
+- `retro_review` 提交后保存最新遥测。`retro_telemetry` 每次只读计算当前回报表
+  （可按 taskType 过滤），不写账本、日志或移动 skill 文件。
+- `verdict=deprecated` 仅提示核查与回滚；候选仍为 `promoted`，直到显式归档。
+  `/retro/state` 与 client 面板展示最近一次保存的 verdict。
 - 局限：当前会话摘要样本少，多数 verdict 会是 insufficient；随着任务积累数据才有效。
   未来若 tool-skill 暴露加载事件，可升级为真实使用遥测。
 
-## B 系列：进化门控（日志 / canary / 裁判一致性 / 自动回滚）
+## B 系列：进化门控（日志 / canary / 裁判一致性 / 显式回滚）
 
-- **B0 决策日志**：`evolution.log.jsonl` 记录每一次 promote / reject / auto-rollback /
-  canary 失败——「改了什么都查得回来」，全可追溯。
+- **B0 决策日志**：`evolution.log.jsonl` 记录 promote / reject / rollback / restore /
+  canary 失败；写入失败会在工具结果中返回 `logError` 并输出错误日志。
 - **B1 canary 冒烟门**：晋升写入后立即读回校验（frontmatter 分隔符 / name /
   description / 无密钥），失败则拒绝晋升并归档失败文件。
 - **B2 裁判一致性校验**：judge.evidence 必须引用候选名或 taskType，防「模板化裁判」
   （`judgeConsistency:false` 可关，向后兼容）。
-- **B3 自动回滚**：遥测 verdict=deprecated 时，skill 文件自动移入
-  `~/.dsh/skills-archive/`（skill provider 不再发现，可恢复）+ 记日志。
-  判定含**绝对红线**：无基线时失败率/纠错率 ≥50% 且样本≥3 也触发降级。
+- **B3 显式回滚**：`skill_rollback({name})` 默认只预览源和目标路径；
+  确认后调用 `skill_rollback({name, confirm:true})` 才把文件移入
+  `skills-archive/` 并将候选置为 `deprecated`。恢复先预览
+  `skill_restore({name})`，再调用 `skill_restore({name, confirm:true})`。
+  两个操作都会拒绝已占用的目标路径（含悬空符号链接）。候选账本先写临时文件
+  再替换，账本保存失败时会尝试把 skill 文件移回原位。遥测判定含**绝对红线**：无基线时
+  失败率/纠错率 ≥50% 且样本≥3 也会建议回滚。
 
-配置：`evolutionLog` / `autoRollback` / `judgeConsistency`（默认全开）。
+配置：`evolutionLog` / `judgeConsistency`（默认开启）。旧版 `autoRollback`
+配置不再触发文件移动。
 ## 里程碑
 
 - [x] A0/A1：自动触发 + 结构化复盘落盘（本原型）
 - [x] A2：skill inbox + lint 晋升门（retro_inbox / skill_promote / skill_reject）
 - [ ] A3：probe/judge 自动晋升
-- [x] A4：skill 遥测闭环 + 自动降级（retro_telemetry + 代理指标 + deprecated 标记）
-- [x] B 系列：进化门控（B0 日志 / B1 canary / B2 裁判一致性 / B3 自动回滚）
+- [x] A4：skill 遥测闭环（retro_telemetry + 代理指标 + 只读查询）
+- [x] B 系列：进化门控（B0 日志 / B1 canary / B2 裁判一致性 / B3 显式回滚与恢复）

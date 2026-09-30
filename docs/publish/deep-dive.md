@@ -53,10 +53,10 @@ DeepSeek Harness（DSH）的架构事实是「一切皆插件，没有特权内�
 - lint（机械）→ probe（skill_probe 回填真实试跑结果，failed 阻止晋升）→ judge（独立裁判意见必填：verdict=pass + evidence≥20 字符）。
 - 真实宿主验证：无 judge 调用被拒 → 带 judge 晋升 → 账本记录 judge/probe 完整审计链。
 
-### A4 遥测闭环 + 自动降级
+### A4 遥测闭环与显式回滚
 
 - retro_telemetry 工具：按 skill 覆盖的 taskType 聚合晋升前后会话质量（工具失败率/用户纠错率），verdict=healthy/deprecated/insufficient。
-- 自动降级：verdict=deprecated 的 skill 标记为 deprecated 状态（不删文件，可追溯）。
+- 查询只读；verdict=deprecated 建议核查。skill_rollback 默认只预览，confirm:true 才归档文件并更新状态；skill_restore 同样可预览和显式恢复。
 - **诚实局限**：DSH 暂无「skill 被模型加载」事件，A4 用代理指标；当前样本少，verdict 多为 insufficient，随任务积累才有统计意义。
 
 ### Web Client 面板
@@ -86,7 +86,7 @@ DeepSeek Harness（DSH）的架构事实是「一切皆插件，没有特权内�
 **下一步**：
 - A4 数据积累：把 retro_review 变成习惯，样本量上来后 healthy/deprecated 判定才有意义；
 - 真实 skill 加载事件：若 tool-skill 暴露加载钩子，遥测可从代理指标升级为真实使用统计；
-- 进化门控 B 系列：canary 测试门 → 独立 LLM 裁判 → 自动回滚；
+- 进化门控 B 系列：canary 测试门 → 独立 LLM 裁判 → 显式回滚与恢复；
 - 轨迹数据管道：把 session 日志导出为结构化训练数据，连接训练侧飞轮。
 
 ---

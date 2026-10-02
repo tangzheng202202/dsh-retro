@@ -91,7 +91,8 @@ retro_review 提交的 `skillCandidates` 会被自动收割进 `candidates.json`
 - `skill_reject`：拒绝（或 `restore:true` 恢复 pending）。
 
 > 与 task-board 的关系：task-board 数据在浏览器 localStorage，宿主插件无法直接写入，
-> 因此 A2 用宿主侧 `candidates.json` 账本作为审批队列（agent 在会话内审批，与 GUI 同屏可见）。
+> 因此 A2 用宿主侧 `candidates.json` 账本作为候选队列（agent 可在会话内调用工具，与 GUI 同屏可见）。
+> `judge`、`overwrite:true` 和下文的 `confirm:true` 都是工具调用参数；插件无法据此验证人类是否批准。
 > 若要可视化面板，后续可加 web client 半（读宿主 API 渲染候选卡片）。
 
 ## 与 OpenViking 的关系（诚实说明）
@@ -143,11 +144,17 @@ retro_review 提交的 `skillCandidates` 会被自动收割进 `candidates.json`
 - **B2 裁判一致性校验**：judge.evidence 必须引用候选名或 taskType，防「模板化裁判」
   （`judgeConsistency:false` 可关，向后兼容）。
 - **B3 显式回滚**：`skill_rollback({name})` 默认只预览源和目标路径；
-  确认后调用 `skill_rollback({name, confirm:true})` 才把文件移入
+  调用方传入 `skill_rollback({name, confirm:true})` 才把文件移入
   `skills-archive/` 并将候选置为 `deprecated`。恢复先预览
   `skill_restore({name})`，再调用 `skill_restore({name, confirm:true})`。
-  两个操作都会拒绝已占用的目标路径（含悬空符号链接）。候选账本先写临时文件
-  再替换，账本保存失败时会尝试把 skill 文件移回原位。遥测判定含**绝对红线**：无基线时
+  两个操作用排他创建拒绝覆盖目标路径（含竞争进程刚创建的文件和悬空符号链接）；
+  源路径必须是普通文件，目录与符号链接均拒绝。跨卷移动先复制到目标目录的临时文件，
+  再排他创建目标；异常时可能需要核查两侧文件。
+  候选账本的所有读改写使用跨进程锁，并先写临时文件再替换。账本保存失败时会
+  尝试以同样的排他方式把 skill 文件移回原位；若两边路径仍有文件，需人工核查，
+  不会覆盖其中任何一个。进程异常退出可能遗留 `.candidates.lock`：确认持锁进程已退出后再清理。
+  `confirm:true` 不能替代宿主的人类授权门；真实环境启用前仍须验证该门。
+  遥测判定含**绝对红线**：无基线时
   失败率/纠错率 ≥50% 且样本≥3 也会建议回滚。
 
 配置：`evolutionLog` / `judgeConsistency`（默认开启）。旧版 `autoRollback`

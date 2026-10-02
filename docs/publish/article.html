@@ -82,8 +82,8 @@ a{color:#2f6fed;text-decoration:none}
 <p>晋升门升级为三道闸：<strong>lint</strong>（机械检查）→ <strong>probe</strong>（真实试跑，failed 阻止晋升）→ <strong>judge</strong>（独立裁判意见必填：verdict=pass + 证据）。账本完整记录审计链。</p>
 <div class="quote">自进化的护栏：裁判与门规本身不可被进化。</div>
 
-<h3>A4 · 遥测闭环 + 自动降级</h3>
-<p>retro_telemetry 生成「skill 投资回报表」：按 skill 覆盖的任务类型聚合晋升前后的会话质量（工具失败率 / 用户纠错率），verdict=healthy / deprecated / insufficient。<strong>恶化的 skill 自动降级标记</strong>（不删文件，可追溯）。</p>
+<h3>A4 · 遥测闭环与显式回滚</h3>
+<p>retro_telemetry 只读生成「skill 投资回报表」：按 skill 覆盖的任务类型聚合晋升前后的会话质量（工具失败率 / 用户纠错率），verdict=healthy / deprecated / insufficient。恶化时建议核查；skill_rollback 默认预览，显式确认后才归档文件，skill_restore 可恢复。</p>
 <p>诚实说明：DSH 目前没有「skill 被加载」事件，A4 用的是<span class="hl">代理指标</span>——衡量任务类型前后的质量变化，而非真实调用次数。样本积累中，多数 verdict 暂为 insufficient，这是数据阶段而非缺陷。</p>
 
 <h3>Web 面板</h3>
@@ -108,7 +108,7 @@ a{color:#2f6fed;text-decoration:none}
 
 <h2>⑦ 自进化的边界与下一步</h2>
 <p><strong>边界</strong>：能进化的不是权重，是外脑资产；进化必须可测试、可回滚、可积累。三层门禁就是「自我修改」的护栏。</p>
-<p><strong>下一步</strong>：让复盘提交成为习惯，样本量上来后遥测判定才有统计意义；等待 skill 加载事件以升级真实遥测；推进进化门控的自动回滚；最后把轨迹数据管道接到训练侧，闭合双飞轮。</p>
+<p><strong>下一步</strong>：让复盘提交成为习惯，样本量上来后遥测判定才有统计意义；等待 skill 加载事件以升级真实遥测；完善显式回滚与恢复的审计体验；最后把轨迹数据管道接到训练侧，闭合双飞轮。</p>
 
 <figure><img src="images/06-github.png" alt="开源发布"><figcaption>图 6 · 已开源：dsh-retro @ GitHub</figcaption></figure>
 

@@ -35,7 +35,7 @@ test('enabled:true → 事件流产出 turn-trace 与 session-summary，retro_re
   const ctx = makeFakeCtx()
   apply(ctx, { enabled: true, storageDir: dir, inbox: false })
 
-  assert.equal(ctx.registered.length, 6) // retro_review + retro_inbox + skill_promote + skill_reject + skill_probe + retro_telemetry
+  assert.equal(ctx.registered.length, 8) // 原有 6 个工具 + skill_rollback + skill_restore
   assert.equal(ctx.registered[0].name, 'retro_review')
 
   const emit = (type, data) => ctx.emit('session/event', SESSION, { type, data, time: Date.now() })

@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { mkdtempSync, readFileSync, writeFileSync, mkdirSync, rmSync } from 'node:fs'
+import { mkdtempSync, readFileSync, writeFileSync, mkdirSync, existsSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { apply } from '../lib/index.js'
@@ -68,18 +68,17 @@ function boot(afterFail) {
   return { dir, ctx, telemetry }
 }
 
-test('A4: after 恶化（failRate 0.1→0.6，样本≥3）→ deprecated 且自动降级', async () => {
+test('A4: 查询识别恶化，但不修改账本或候选状态', async () => {
   const { dir, telemetry } = boot(0.6)
+  const before = readFileSync(join(dir, 'candidates.json'))
   const r = await telemetry.execute({})
   assert.equal(r.summary.deprecated, 1)
   assert.equal(r.skills[0].verdict, 'deprecated')
+  assert.equal(r.skills[0].rollbackRecommended, true)
   assert.equal(r.skills[0].samplesBefore, 3)
   assert.equal(r.skills[0].samplesAfter, 3)
-  const db = JSON.parse(readFileSync(join(dir, 'candidates.json'), 'utf8'))
-  assert.equal(db.candidates[0].status, 'deprecated')
-  assert.match(db.candidates[0].note, /telemetry 自动降级/)
-  assert.ok(db.candidates[0].telemetry.checkedAt)
-  assert.equal(db.candidates[0].telemetry.verdict, 'deprecated') // telemetry 已持久化到账本
+  assert.deepEqual(readFileSync(join(dir, 'candidates.json')), before)
+  assert.equal(existsSync(join(dir, 'skills-archive')), false)
   rmSync(dir, { recursive: true, force: true })
 })
 
@@ -107,11 +106,27 @@ test('A4: after 样本不足（<3）→ insufficient', async () => {
   rmSync(dir, { recursive: true, force: true })
 })
 
-test('A4: retro_review 提交后自动刷新遥测并降级', async () => {
+test('A4: 无会话目录时查询不会创建目录', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'retro-a4-empty-'))
+  writeFileSync(join(dir, 'candidates.json'), JSON.stringify(promotedCandidate()))
+  const before = readFileSync(join(dir, 'candidates.json'))
+  const ctx = makeFakeCtx()
+  apply(ctx, { enabled: true, storageDir: dir, skillsDir: join(dir, 'skills'), inbox: false, harvestOnStart: false })
+  const r = await ctx.registered.find((t) => t.name === 'retro_telemetry').execute({})
+  assert.equal(r.summary.insufficient, 1)
+  assert.equal(existsSync(join(dir, 'retros')), false)
+  assert.equal(existsSync(join(dir, 'sessions')), false)
+  assert.deepEqual(readFileSync(join(dir, 'candidates.json')), before)
+  rmSync(dir, { recursive: true, force: true })
+})
+
+test('A4: retro_review 可持久化遥测，但不降级或回滚文件', async () => {
   const { dir, ctx } = boot(0.6)
   const retro = ctx.registered.find((t) => t.name === 'retro_review')
   await retro.execute({ taskType: 'plugin-dev', outcome: 'success' })
   const db = JSON.parse(readFileSync(join(dir, 'candidates.json'), 'utf8'))
-  assert.equal(db.candidates[0].status, 'deprecated')
+  assert.equal(db.candidates[0].status, 'promoted')
+  assert.equal(db.candidates[0].telemetry.verdict, 'deprecated')
+  assert.equal(existsSync(join(dir, 'skills-archive')), false)
   rmSync(dir, { recursive: true, force: true })
 })

@@ -33,10 +33,10 @@
     "LICENSE"
   ],
   "scripts": {
-    "test": "node --test tests/core.test.mjs tests/plugin.test.mjs tests/a2.test.mjs tests/a3.test.mjs tests/a4.test.mjs tests/b.test.mjs"
+    "test": "node --test tests/core.test.mjs tests/plugin.test.mjs tests/a2.test.mjs tests/a3.test.mjs tests/a4.test.mjs tests/b.test.mjs tests/http.test.mjs"
   },
   "engines": {
-    "node": ">=16"
+    "node": ">=18"
   },
   "license": "MIT"
 }

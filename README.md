@@ -23,7 +23,7 @@
 
 ## 安装
 
-先有一个能跑的 dsh（下面用 web profile）。插件是纯 JS，没有构建步骤。Node.js 16 或更高即可；这个要求写在 `package.json` 的 `engines` 里，对的是代码实际用到的语法（`node:` 内置模块和 `??=`）。跑文末的 `npm test` 需要 Node 18+，因为测试用的是 `node --test`。
+先有一个能跑的 dsh（下面用 web profile）。插件是纯 JS，没有构建步骤。Node.js 18 或更高（`package.json` 的 `engines`）。运行时代码只用到更早就有的 `node:` 导入和 `??=`，但仓库的 `npm test` 走 `node --test`，这是 Node 18 才有的；16 没有跑过，所以不把 engines 写成 16。
 
 从 GitHub 装：
 
@@ -100,7 +100,7 @@ dsh web --dump-config | grep dsh-retro
 
 ### Install (English)
 
-You need a working `dsh web` profile and Node.js 16+. There is no build step.
+You need a working `dsh web` profile and Node.js 18+. There is no build step.
 
 ```sh
 dsh plugin --profile web add "github:tangzheng202202/dsh-retro#main"
@@ -212,6 +212,7 @@ retro_review 提交的 `skillCandidates` 会被自动收割进 `candidates.json`
 - `lib/client.js`：设置页插件卡片「复盘与技能晋升」——候选账本统计（pending/promoted/
   rejected/retros/turns）+ 候选列表（状态/裁判/探针/来源/备注）+ 刷新按钮。
 - 数据来自宿主路由 `GET /retro/state`（`ctx.inject(['webServer'])` 注册，零额外依赖）。
+- `/retro` 整段前缀先走 `connection.admit`，和 dsh web 的 `/api` 一样：没有登录 cookie 是 401，Host/Origin 不被信任是 403，已登录但不是 owner 也是 403。未通过不读盘。响应里不带存储目录绝对路径。设置页是同源请求，会带上已经登录的 cookie。
 - 审批写操作留在会话内由 agent 执行（judge 门需要裁判意见，浏览器面板只读），
   面板上的提示文案会引导用户这么做。
 - 加载机制：`dsh.client.platform: web` + `exports["./client"]`，由 web UI 的

@@ -1,6 +1,8 @@
 # dsh-retro bundle patch：挂载复盘插件。默认 enabled:false，装上不动作（零事件监听、零工具）。
-# 开启方式（在 profile patch 层或 ~/.dsh/cordis.patch.yml）：
+# 用户层补丁按 id 命中后会整段替换 config（不是深合并）。name 若写就必须是 dsh-retro。
+# 开启方式（$DSH_HOME/cordis.patch.yml，或 profile 的 cordis.patch.yml）：
 #   - id: dsh-retro
+#     name: dsh-retro
 #     config:
 #       enabled: true
 #       remind: true        # 同时把 retro_review 收尾提醒注入 system prompt

@@ -23,20 +23,118 @@
 
 ## 安装
 
-    # 1. 克隆/放入任意目录（例如 ~/dsh-retro）
-    # 2. 在 profile 的 package.json 注册 link 依赖 + bundle（以 web profile 为例）：
-    #    "dependencies": { "dsh-retro": "link:~/dsh-retro" }
-    #    "dsh.profile.bundles": [ ..., "dsh-retro", ... ]
-    # 3. 在 profile 目录执行 pnpm install
-    # 4. 重启 DSH
+先有一个能跑的 dsh（下面用 web profile）。插件是纯 JS，没有构建步骤。Node.js 18 或更高（`package.json` 的 `engines`）。运行时代码只用到更早就有的 `node:` 导入和 `??=`，但仓库的 `npm test` 走 `node --test`，这是 Node 18 才有的；16 没有跑过，所以不把 engines 写成 16。
 
-开启（默认关闭）：
+从 GitHub 装：
 
-    # ~/.dsh/cordis.patch.yml 或 profile patch 层
-    - id: dsh-retro
-      config:
-        enabled: true
-        remind: true    # 同时把收尾约定注入 system prompt，让模型主动调用 retro_review
+```sh
+dsh plugin --profile web add "github:tangzheng202202/dsh-retro#main"
+```
+
+在本机改代码时，用你自己的克隆目录，不要照抄别人的家目录路径：
+
+```sh
+dsh plugin --profile web add link:/你的克隆目录
+```
+
+装完要重启 `dsh web` 才生效。
+
+### 默认是关的，这样打开
+
+不改配置的话，插件只打一行 `installed but disabled`，不监听会话、不注册工具、不写文件。这是故意的：没点头之前不采集。
+
+dsh 的补丁是按 `id` 找到这一行，然后**整段换掉** `config`，不是按键合并。`name` 写了就必须是 `dsh-retro`，写错会被跳过。没写到的配置项会回到插件代码里的默认值。
+
+把下面这段加进 `$DSH_HOME/cordis.patch.yml`（没改过 `DSH_HOME` 的话就是 `~/.dsh/cordis.patch.yml`）。只想作用于 web profile 时，写到 `$DSH_HOME/profiles/web/cordis.patch.yml`。文件不存在就新建。
+
+```yaml
+- id: dsh-retro
+  name: dsh-retro
+  config:
+    enabled: true
+    remind: true
+```
+
+`remind: true` 会在 system prompt 里加一句收尾约定，让模型自己去调 `retro_review`。不想注入提示就删掉这一行，或写成 `false`。
+
+然后：
+
+```sh
+dsh web --dump-config | grep dsh-retro
+```
+
+输出里应能看到 `enabled: true`。重启 `dsh web`。
+
+成功的日志是：
+
+```text
+[dsh-retro] started: root=... remind=on viking=on inbox=on
+```
+
+还是 `installed but disabled`，就是开关没合上。
+
+### 一分钟确认它在写文件
+
+开启并重启后，存储目录会出现（默认 `$DSH_HOME/storages/dsh-retro`，也就是 `~/.dsh/storages/dsh-retro`）。往 `inbox/` 放一个 `.json`，例如 `hello.json`：
+
+```json
+{
+  "sessionId": "hello",
+  "taskType": "plugin-dev",
+  "outcome": "success",
+  "summary": "装上 dsh-retro 之后，确认复盘文件落了盘。",
+  "skillCandidates": [
+    {
+      "name": "check-retro-files",
+      "trigger": "刚装上 dsh-retro，想确认有没有写盘",
+      "instructions": "打开 storages/dsh-retro/retros，看有没有新的 json 文件。",
+      "confidence": 0.5
+    }
+  ]
+}
+```
+
+再重启一次（或最多等约 60 秒，inbox 会轮询）。`retros/` 里出现一个新的 json，就说明采集开了。
+
+`candidates.json` 要再等下一次启动才会从已有的 retros 收割：启动时先收割、再扫 inbox。不想多等一次，就在会话里让模型调用 `retro_review`，那次提交会马上收割。
+
+### Install (English)
+
+You need a working `dsh web` profile and Node.js 18+. There is no build step.
+
+```sh
+dsh plugin --profile web add "github:tangzheng202202/dsh-retro#main"
+```
+
+Local checkout (use your own path):
+
+```sh
+dsh plugin --profile web add link:/path/to/your/clone
+```
+
+Capture stays **off** until you opt in. A patch replaces the whole `config` object; `name` must be `dsh-retro` if you set it. Add this to `$DSH_HOME/cordis.patch.yml` (or the web profile's `cordis.patch.yml`), then restart `dsh web`:
+
+```yaml
+- id: dsh-retro
+  name: dsh-retro
+  config:
+    enabled: true
+    remind: true
+```
+
+`dsh web --dump-config` should show `enabled: true`. The log line `[dsh-retro] started:` means it is on. `installed but disabled` means it is still off. Drop a `.json` retro into `$DSH_HOME/storages/dsh-retro/inbox/` and restart once; a new file under `retros/` means capture is writing.
+
+## 截图
+
+实机 GIF 和截图还没放进仓库。拍好之后放到下面三个路径，这里会直接显示：
+
+![一条安装命令，直到日志出现 started](assets/01-install.gif)
+
+![开启后 retros 目录里的复盘文件](assets/02-files.png)
+
+![设置页「复盘与技能晋升」卡片](assets/03-panel.png)
+
+`docs/publish/images/` 里的图是文章用的示意图，不是这个插件的产品截图。
 
 ## 配置项
 
@@ -114,6 +212,8 @@ retro_review 提交的 `skillCandidates` 会被自动收割进 `candidates.json`
 - `lib/client.js`：设置页插件卡片「复盘与技能晋升」——候选账本统计（pending/promoted/
   rejected/retros/turns）+ 候选列表（状态/裁判/探针/来源/备注）+ 刷新按钮。
 - 数据来自宿主路由 `GET /retro/state`（`ctx.inject(['webServer'])` 注册，零额外依赖）。
+- `/retro` 整段前缀先走 `connection.admit`，和 dsh web 的 `/api` 一样。没有登录 cookie 是 401，伪造 Host 是 403。0.2.0-rc.2 登录成功后 `admit()` 交回的 operator 只有 `id`/`ctx`/`scope`，没有 `principal`，这种也放行；带 `principal` 的版本仍要求 `kind === 'owner'`。未通过不读盘。响应里不带存储目录绝对路径。
+- 卡片挂在 0.2.0-rc.2 实际有的槽上：设置 → 内置插件 里的「复盘与技能晋升」标签（`settings.plugins.tab`），以及插件页打开 `dsh-retro` 这个包之后、详情下面的区块（`plugins.detail.section`）。更早的 `settings.plugin.item` 仍会注册（带 `key`），这一版没有该槽，所以那里不会出现。
 - 审批写操作留在会话内由 agent 执行（judge 门需要裁判意见，浏览器面板只读），
   面板上的提示文案会引导用户这么做。
 - 加载机制：`dsh.client.platform: web` + `exports["./client"]`，由 web UI 的

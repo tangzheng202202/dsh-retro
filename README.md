@@ -212,7 +212,8 @@ retro_review 提交的 `skillCandidates` 会被自动收割进 `candidates.json`
 - `lib/client.js`：设置页插件卡片「复盘与技能晋升」——候选账本统计（pending/promoted/
   rejected/retros/turns）+ 候选列表（状态/裁判/探针/来源/备注）+ 刷新按钮。
 - 数据来自宿主路由 `GET /retro/state`（`ctx.inject(['webServer'])` 注册，零额外依赖）。
-- `/retro` 整段前缀先走 `connection.admit`，和 dsh web 的 `/api` 一样：没有登录 cookie 是 401，Host/Origin 不被信任是 403，已登录但不是 owner 也是 403。未通过不读盘。响应里不带存储目录绝对路径。设置页是同源请求，会带上已经登录的 cookie。
+- `/retro` 整段前缀先走 `connection.admit`，和 dsh web 的 `/api` 一样。没有登录 cookie 是 401，伪造 Host 是 403。0.2.0-rc.2 登录成功后 `admit()` 交回的 operator 只有 `id`/`ctx`/`scope`，没有 `principal`，这种也放行；带 `principal` 的版本仍要求 `kind === 'owner'`。未通过不读盘。响应里不带存储目录绝对路径。
+- 卡片挂在 0.2.0-rc.2 实际有的槽上：设置 → 内置插件 里的「复盘与技能晋升」标签（`settings.plugins.tab`），以及插件页打开 `dsh-retro` 这个包之后、详情下面的区块（`plugins.detail.section`）。更早的 `settings.plugin.item` 仍会注册（带 `key`），这一版没有该槽，所以那里不会出现。
 - 审批写操作留在会话内由 agent 执行（judge 门需要裁判意见，浏览器面板只读），
   面板上的提示文案会引导用户这么做。
 - 加载机制：`dsh.client.platform: web` + `exports["./client"]`，由 web UI 的
